@@ -1,9 +1,13 @@
-#include <stdio.h>
-#include <stdlib.h>
+#define VEC_CFG_IMPLEMENTATION
+#define BS_CFG_IMPLEMENTATION
+#include "gol.h"
 
+#include <utils/common.h>
 #include <utils/ifjmp.h>
 
-#include "gol.h"
+#include <stdlib.h>
+
+#define gol_coord2idx(gol, l, c) (((l) * (gol)->nlines) + (c))
 
 /*
  * 1. Any live cell with fewer than two live neighbours
@@ -15,92 +19,181 @@
  * 4. Any dead cell with exactly three live neighbours
  *     becomes a live cell, as if by reproduction.
  */
-
-static inline enum gol_state gol_fate (gol_cell cell, unsigned char neighbours)
+static inline bool _gol_cell_fate (bool cell, unsigned char neighbours)
 {
-    return
-        (cell >= GOL_STATE_INVALID) ?
-        GOL_STATE_DEAD :
-        (cell == GOL_STATE_ALIVE && neighbours < 2) ?
-        GOL_STATE_DEAD :
-        (cell == GOL_STATE_ALIVE && (neighbours == 2 || neighbours == 3)) ?
-        GOL_STATE_ALIVE :
-        (cell == GOL_STATE_ALIVE && neighbours > 3) ?
-        GOL_STATE_DEAD :
-        (cell == GOL_STATE_DEAD && neighbours == 3) ?
-        GOL_STATE_ALIVE :
-        cell ;
+    return (!cell && neighbours == 3) ? /* (4) */
+        true:
+        (cell && (neighbours < 2 || neighbours > 3)) ? /* (1) & (3) */
+        false:
+        cell; /* (2) */
 }
 
-static inline unsigned char gol_neighbours (const gol_board board, unsigned int BL, unsigned int BC, unsigned int CL, unsigned int CC)
+static inline bool _gol_clean (struct gol * self)
 {
-    if (board == NULL)
-        return 2; /* doesnt change state */
-
-    /* doesnt work for boards with (BL < 2) or (BC < 2) */
-    unsigned int ML = min(CL, BL - 2) + 2;
-    unsigned int MC = min(CC, BC - 2) + 2;
-    unsigned int ml = max(CL, 1) - 1;
-    unsigned int mc = max(CC, 1) - 1;
-
-    unsigned char neighbours = 0;
-
-    for (unsigned int l = ml; l < ML; l++)
-        for (unsigned int c = mc; c < MC; c++)
-            if (l != CL && c != CC && board[l][c] == GOL_STATE_ALIVE)
-                neighbours++;
-
-    return neighbours;
+    *self = (struct gol) {0};
+    return true;
 }
 
-void gol_iterate (gol_board board, gol_board neighbours, unsigned int L, unsigned int C, unsigned int N)
+/*
+ *      lc   uc
+ *   ll  - - -
+ *      | | | |
+ *       - - -
+ *      | |c| |
+ *       - - -
+ *      | | | |
+ *   ul  - - -
+ */
+static inline unsigned char _gol_cell_neighbours (struct gol * self, unsigned l, unsigned c)
 {
-    if (board == NULL || neighbours == NULL)
-        return;
+    unsigned lc = max(c, 1) - 1;
+    unsigned ll = max(l, 1) - 1;
+    unsigned uc = min(c, self->ncols  - 2) + 2;
+    unsigned ul = min(l, self->nlines - 2) + 2;
 
-    for (unsigned int n = 0; n < N; n++) {
-        for (unsigned l = 0; l < L; l++)
-            for (unsigned c = 0; c < C; c++)
-                neighbours[l][c] = gol_neighbours(board, L, C, l, c);
+    unsigned char ret = 0;
 
-        for (unsigned l = 0; l < L; l++)
-            for (unsigned c = 0; c < C; c++)
-                board[l][c] = gol_fate(board[l][c], neighbours[l][c]);
+    for (unsigned i = ll; i < ul; i++)
+        for (unsigned j = lc; j < uc; j++)
+            if ((i != l || j != c) && bs_get(self->current, gol_coord2idx(self, i, j)))
+                ret++;
+
+    return ret;
+}
+
+static inline bool _gol_all_neighbours (struct gol * self)
+{
+    bool ret = true;
+    for (unsigned i = 0; ret && i < self->nlines; i++) {
+        for (unsigned j = 0; ret && j < self->ncols; j++) {
+            unsigned char neighbours = _gol_cell_neighbours(self, i, j);
+            ret = vec_set_nth(self->neighbours, gol_coord2idx(self, i, j), neighbours);
+        }
     }
+    return ret;
 }
 
-void gol_random (gol_board board, unsigned int L, unsigned int C)
+bool gol_cell_kill (struct gol * self, unsigned l, unsigned c)
 {
-    if (board == NULL)
-        return;
-
-    for (unsigned l = 0; l < L; l++)
-        for (unsigned c = 0; c < C; c++)
-            board[l][c] = (unsigned char) (random() % 2);
+    return gol_cell_set(self, l, c, false);
 }
 
-void gol_print (gol_board board, unsigned int L, unsigned int C)
+bool gol_cell_revive (struct gol * self, unsigned l, unsigned c)
 {
-    if (board == NULL)
-        return;
+    return gol_cell_set(self, l, c, true);
+}
 
-    //putchar(' ');
-    //putchar(' ');
-    //for (unsigned c = 0; c < C; c++)
-    //    printf("%X", c);
-    //putchar('\n');
+bool gol_cell_set (struct gol * self, unsigned l, unsigned c, bool val)
+{
+    return bs_set(self->current, gol_coord2idx(self, l, c), val);
+}
 
-    for (unsigned l = 0; l < L; l++) {
-        //printf("%X ", l);
+bool gol_eprint (struct gol * self)
+{
+    return gol_fprint(self, stderr);
+}
 
-        for (unsigned c = 0; c < C; c++)
-            putchar((board[l][c] == GOL_STATE_ALIVE) ?
-                    'X' :
-                    (board[l][c] == GOL_STATE_DEAD) ?
-                    ' ' :
-                    '?'
-                   );
-
-        putchar('\n');
+bool gol_fprint (struct gol * self, FILE * outf)
+{
+    if (self == NULL || outf == NULL)
+        return false;
+    for (unsigned i = 0; i < self->nlines; i++) {
+        for (unsigned j = 0; j < self->ncols; j++)
+            fputc(bs_get(self->current, gol_coord2idx(self, i, j)) ? '#' : '.', outf);
+        fputc('\n', outf);
     }
+    return true;
+}
+
+bool gol_free (struct gol * self)
+{
+    if (self != NULL) {
+        bs_free(self->current);
+        bs_free(self->next);
+        *self->neighbours = vec_free(*self->neighbours);
+        _gol_clean(self);
+    }
+    return true;
+}
+
+bool gol_iter (struct gol * self, unsigned niter)
+{
+    if (self == NULL)
+        return  false;
+    bool ret = true;
+    for (unsigned i = 0; ret && i < niter; i++)
+        ret = gol_next(self);
+    return ret;
+}
+
+bool gol_new (struct gol * self, unsigned nlines, unsigned ncols)
+{
+    unsigned ncells = nlines * ncols;
+    return self != NULL
+        && bs_init(self->current, ncells)
+        && bs_init(self->next, ncells)
+        && vec_with_cap(self->neighbours, ncells)
+        && vec_set_len(self->neighbours, ncells)
+        && ((self->nlines = nlines), (self->ncols = ncols), true);
+}
+
+bool gol_next (struct gol * self)
+{
+    if (self == NULL || !_gol_all_neighbours(self))
+        return false;
+
+    for (unsigned i = 0; i < self->nlines; i++) {
+        for (unsigned j = 0; j < self->ncols; j++) {
+            unsigned idx = gol_coord2idx(self, i, j);
+            bool cur = bs_get(self->current, idx);
+            bool next = _gol_cell_fate(cur, vec_get_nth(self->neighbours, idx));
+            bool res = bs_set(self->next, idx, next);
+            if (!res)
+                return false;
+        }
+    }
+
+    /* dead end */
+    if (bs_eq(self->current, self->next))
+        return false;
+
+    void * tmp = self->current->bytes;
+    self->current->bytes = self->next->bytes;
+    self->next->bytes = tmp;
+
+    return true;
+}
+
+bool gol_print (struct gol * self)
+{
+    return gol_fprint(self, stdout);
+}
+
+bool gol_random (struct gol * self)
+{
+    if (self == NULL)
+        return false;
+
+    for (unsigned i = 0; i < self->nlines; i++) {
+        for (unsigned j = 0; j < self->ncols; j++) {
+            unsigned idx = gol_coord2idx(self, i, j);
+            bool alive = (rand() % 2);
+            bool res = bs_set(self->current, idx, alive);
+            if (!res)
+                return false;
+        }
+    }
+
+    return true;
+}
+
+bool gol_set_board (struct gol * self, unsigned ol, unsigned oc, unsigned L, unsigned C, const bool board[L][C])
+{
+    if (self == NULL || board == NULL)
+        return false;
+    bool ret = true;
+    for (unsigned i = 0; ret && i < L; i++)
+        for (unsigned j = 0; ret && j < C; j++)
+            ret = gol_cell_set(self, ol + i, oc + j, board[i][j]);
+    return ret;
 }

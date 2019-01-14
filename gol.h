@@ -1,45 +1,31 @@
 #ifndef _GOL_H
 #define _GOL_H
 
-#define max(x, y) (((x) > (y)) ? (x) : (y))
-#define min(x, y) (((x) < (y)) ? (x) : (y))
+#define VEC_CFG_DATA_TYPE unsigned char
+#include <utils/vec.h>
+#include <utils/bs.h>
 
-#define GOL_BOARD_L (40U)
-#define GOL_BOARD_C (100U)
+#include <stdio.h>
 
-typedef unsigned char gol_cell;
-typedef gol_cell gol_board[GOL_BOARD_L][GOL_BOARD_C];
-
-enum gol_state {
-    GOL_STATE_DEAD  = 0,
-    GOL_STATE_ALIVE = 1,
-    GOL_STATE_INVALID = 2,
+struct gol {
+    struct bs  current[1];
+    struct bs  next[1];
+    struct vec neighbours[1];
+    unsigned   nlines;
+    unsigned   ncols;
 };
 
-/**
- * @brief Iterate @a N times on @a board
- * @param board The board to iterate over
- * @param neighbours A temporary board to keep neighbours count
- * @param L Number of lines @a board and @a neighbours have
- * @param C Number of columns @a board and @a neighbours have
- * @param N Number of times to iterate over @a board
- */
-void gol_iterate (gol_board board, gol_board neighbours, unsigned int L, unsigned int C, unsigned int N);
-
-/**
- * @brief Randomize @a board
- * @param board The board to randomize
- * @param L Number of lines @a board has
- * @param C Number of columns @a board has
- */
-void gol_random  (gol_board board, unsigned int L, unsigned int C);
-
-/**
- * @brief Print @a board
- * @param board The board to print
- * @param L Number of lines @a board has
- * @param C Number of columns @a board has
- */
-void gol_print (gol_board board, unsigned int L, unsigned int C);
+bool gol_cell_kill   (struct gol * self, unsigned l, unsigned c);
+bool gol_cell_revive (struct gol * self, unsigned l, unsigned c);
+bool gol_cell_set    (struct gol * self, unsigned l, unsigned c, bool val);
+bool gol_eprint      (struct gol * self);
+bool gol_fprint      (struct gol * self, FILE * outf);
+bool gol_free        (struct gol * self);
+bool gol_iter        (struct gol * self, unsigned niter);
+bool gol_new         (struct gol * self, unsigned nlines, unsigned ncols);
+bool gol_next        (struct gol * self);
+bool gol_print       (struct gol * self);
+bool gol_random      (struct gol * self);
+bool gol_set_board   (struct gol * self, unsigned ol, unsigned oc, unsigned L, unsigned C, const bool board[L][C]);
 
 #endif /* _GOL_H */
