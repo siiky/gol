@@ -1,43 +1,61 @@
-CC := musl-gcc
-#CC := cc
-EXEC := gol
-INCLUDE := -I/usr/local/include/
-HEADERS :=
+PLATFORM := PLATFORM_DESKTOP
+
+CC := gcc
+
+INCLUDE_PATHS := \
+    -I/usr/local/include/ \
+
+LDFLAGS := \
+
+OPT := \
+    -Og \
+
+CFLAGS := \
+    $(OPT)                    \
+    -Wall                     \
+    -Wextra                   \
+    -Wmissing-prototypes      \
+    -Wpedantic                \
+    -Wstrict-prototypes       \
+    -flto                     \
+    -no-pie                   \
+    -std=c11                  \
+
+# Order matters, dont change
+LDLIBS := \
+    -lraylib   \
+    -lGL       \
+    -lm        \
+    -lpthread  \
+    -ldl       \
+    -lX11      \
+    -lXrandr   \
+    -lXinerama \
+    -lXi       \
+    -lXxf86vm  \
+    -lXcursor  \
+
+CPPFLAGS := \
+    -D$(PLATFORM) \
 
 SRC := \
     gol.c  \
     main.c \
 
 OBJS := $(SRC:.c=.o)
+EXE := gol
 
-OPT := -Og -g
+all: $(EXE)
 
-CFLAGS := \
-    $(INCLUDE)   \
-    $(OPT)       \
-    -Wall        \
-    -Wconversion \
-    -Wextra      \
-    -flto        \
-    -pedantic    \
-    -static      \
-    -std=c18     \
+$(EXE): $(OBJS)
+	@echo "CC $< -> $@"
+	@$(CC) -o $(EXE) $(OBJS) $(CFLAGS) $(INCLUDE_PATHS) $(LDFLAGS) $(LDLIBS) $(CPPFLAGS)
 
-all: $(EXEC)
-
-$(EXEC): $(OBJS)
-	$(CC) $(CFLAGS) $(OBJS) -o $@
-
-strip: $(EXEC)
-	strip -s $(EXEC)
+%.o: %.c
+	@echo "CC $< -> $@"
+	@$(CC) -c -o $@ $< $(CFLAGS) $(INCLUDE_PATHS) $(LDFLAGS) $(LDLIBS) $(CPPFLAGS)
 
 clean:
-	$(RM) $(OBJS) $(EXEC)
+	rm -f $(EXE) $(OBJS)
 
-check: $(SRC) $(HEADERS)
-	cppcheck --std=c11 -f --language=c --enable=all $(INCLUDE) $(SRC) $(HEADERS)
-
-tags: $(SRC) $(HEADERS)
-	ctags --language-force=c --tag-relative=yes -f .tags $(SRC) $(HEADERS)
-
-.PHONY: all check clean strip tags
+.PHONY: all clean

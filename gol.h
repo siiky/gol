@@ -15,6 +15,7 @@ struct gol {
     unsigned   ncols;
 };
 
+bool gol_cell_get    (struct gol * self, unsigned l, unsigned c);
 bool gol_cell_kill   (struct gol * self, unsigned l, unsigned c);
 bool gol_cell_revive (struct gol * self, unsigned l, unsigned c);
 bool gol_cell_set    (struct gol * self, unsigned l, unsigned c, bool val);

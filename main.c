@@ -1,48 +1,82 @@
 #include "gol.h"
 
+#include <raylib.h>
 #include <utils/ifjmp.h>
 
 #include <stdlib.h>
 #include <time.h>
+#include <unistd.h>
 
-int usage (const char * cmd)
-{
-    printf(
-            "Usage:\n"
-            "\t%s NLINES NCOLS\n"
-            "Hit 'q' to quit, or any other character\n"
-            "to see the following iteration\n",
-            cmd);
-    return EXIT_FAILURE;
-}
+#define GOL_RANDOM
 
+#define NELEMS(arr) (sizeof(arr) / sizeof(*arr))
+
+#define GOL_NLINES    100
+#define GOL_NCOLS     100
+#define CELL_ORIGIN_X 0
+#define CELL_ORIGIN_Y 0
+#define CELL_WIDTH    11
+#define CELL_HEIGHT   11
+
+#define TARGET_FPS 60
+#define WIN_HEIGHT (GOL_NLINES * CELL_HEIGHT)
+#define WIN_WIDTH  (GOL_NCOLS * CELL_WIDTH)
+
+#ifndef GOL_RANDOM
 static const bool glider[3][3] = {
     { 0, 0, 1 },
     { 1, 0, 1 },
     { 0, 1, 1 },
 };
+#endif
 
-int main (int argc, char ** argv)
+int main (void)
 {
-    ifjmp(argc < 3, usage);
-
-    srand((unsigned int) time(NULL));
-
+    bool gol_over = false;
     struct gol gol[1] = {0};
-    unsigned nlines = (unsigned) atoi(argv[1]);
-    unsigned ncols = (unsigned) atoi(argv[2]);
-    if (nlines >= 10 && ncols >= 10 && gol_new(gol, nlines, ncols)) {
-        gol_set_board(gol, 0, 0, 3, 3, glider);
+    gol_new(gol, GOL_NLINES, GOL_NCOLS);
 
-        do {
-            gol_print(gol);
-        } while (getc(stdin) != 'q' && gol_next(gol));
+#ifdef GOL_RANDOM
+    srand((unsigned) time(NULL));
+    gol_random(gol);
+#else
+    gol_set_board(gol, 0, 0, NELEMS(glider), NELEMS(*glider), glider);
+#endif
 
-        gol_free(gol);
-    }
+    SetExitKey(KEY_ESCAPE);
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+    SetTargetFPS(TARGET_FPS);
+
+    InitWindow(WIN_WIDTH, WIN_HEIGHT, "wew lad"); {
+        SetWindowMinSize(WIN_WIDTH, WIN_HEIGHT);
+        SetWindowSize(WIN_WIDTH, WIN_HEIGHT);
+
+        while (!WindowShouldClose()) {
+            if (!gol_over && IsKeyDown(KEY_ENTER)) {
+                gol_over = !gol_iter(gol, 1);
+            }
+
+            BeginDrawing(); {
+                ClearBackground(BLACK);
+
+                for (unsigned i = 0; i < gol->nlines; i++) {
+                    for (unsigned j = 0; j < gol->nlines; j++) {
+                        Rectangle cell = {
+                            .x = CELL_ORIGIN_X + j * CELL_WIDTH,
+                            .y = CELL_ORIGIN_Y + i * CELL_HEIGHT,
+                            .width = CELL_WIDTH,
+                            .height = CELL_HEIGHT,
+                        };
+
+                        DrawRectangleRec(cell, gol_cell_get(gol, i, j) ? DARKGRAY : BLACK);
+                    }
+                }
+                DrawRectangleLines(0, 0, WIN_WIDTH, WIN_HEIGHT, RAYWHITE);
+            } EndDrawing();
+        }
+    } CloseWindow();
+
+    gol_free(gol);
 
     return EXIT_SUCCESS;
-
-usage:
-    return usage(argv[0]);
 }

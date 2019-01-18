@@ -7,7 +7,7 @@
 
 #include <stdlib.h>
 
-#define gol_coord2idx(gol, l, c) (((l) * (gol)->nlines) + (c))
+#define gol_coord2idx(gol, l, c) (((l) * (gol)->ncols) + (c))
 
 /*
  * 1. Any live cell with fewer than two live neighbours
@@ -71,6 +71,12 @@ static inline bool _gol_all_neighbours (struct gol * self)
         }
     }
     return ret;
+}
+
+bool gol_cell_get (struct gol * self, unsigned l, unsigned c)
+{
+    return self != NULL
+        && bs_get(self->current, gol_coord2idx(self, l, c));
 }
 
 bool gol_cell_kill (struct gol * self, unsigned l, unsigned c)
