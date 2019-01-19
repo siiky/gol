@@ -1,5 +1,4 @@
 #define VEC_CFG_IMPLEMENTATION
-#define BS_CFG_IMPLEMENTATION
 #include "gol.h"
 
 #include <utils/common.h>
@@ -160,7 +159,7 @@ bool gol_next (struct gol * self)
     }
 
     /* dead end */
-    if (bs_eq(self->current, self->next))
+    if (bs_cmp(self->current, self->next) == 0)
         return false;
 
     void * tmp = self->current->bytes;

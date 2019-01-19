@@ -39,6 +39,8 @@ CPPFLAGS := \
     -D$(PLATFORM) \
 
 SRC := \
+    bs.c   \
+    gens.c \
     gol.c  \
     main.c \
 

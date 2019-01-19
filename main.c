@@ -1,4 +1,5 @@
 #include "gol.h"
+#include "gens.h"
 
 #include <raylib.h>
 #include <utils/ifjmp.h>
@@ -32,8 +33,11 @@ static const bool glider[3][3] = {
 
 int main (void)
 {
-    bool gol_over = false;
+    bool should_iter = true;
     struct gol gol[1] = {0};
+    struct gens gens[1] = {0};
+
+    gens_with_size(gens, 1013);
     gol_new(gol, GOL_NLINES, GOL_NCOLS);
 
 #ifdef GOL_RANDOM
@@ -47,13 +51,21 @@ int main (void)
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     SetTargetFPS(TARGET_FPS);
 
+    SetWindowMinSize(WIN_WIDTH, WIN_HEIGHT);
+    SetWindowSize(WIN_WIDTH, WIN_HEIGHT);
     InitWindow(WIN_WIDTH, WIN_HEIGHT, "wew lad"); {
-        SetWindowMinSize(WIN_WIDTH, WIN_HEIGHT);
-        SetWindowSize(WIN_WIDTH, WIN_HEIGHT);
-
         while (!WindowShouldClose()) {
-            if (!gol_over && IsKeyDown(KEY_ENTER)) {
-                gol_over = !gol_iter(gol, 1);
+            if (should_iter && !IsKeyDown(KEY_ENTER)) {
+                /* Have we seen this iteration? */
+                bool elem = gens_contains(gens, gol);
+
+                /* If not, add it to the seen iterations */
+                if (!elem)
+                    gens_add(gens, gol);
+
+                /* iterate once */
+                should_iter = gol_iter(gol, 1)
+                    && !elem;
             }
 
             BeginDrawing(); {
@@ -77,6 +89,7 @@ int main (void)
     } CloseWindow();
 
     gol_free(gol);
+    gens_free(gens);
 
     return EXIT_SUCCESS;
 }
