@@ -1,3 +1,4 @@
+VALGRIND_LOG := valgrind.log
 PLATFORM := PLATFORM_DESKTOP
 
 CC := gcc
@@ -7,8 +8,7 @@ INCLUDE_PATHS := \
 
 LDFLAGS := \
 
-OPT := \
-    -Og \
+OPT := -Og -g
 
 CFLAGS := \
     $(OPT)                    \
@@ -50,7 +50,7 @@ EXE := gol
 all: $(EXE)
 
 $(EXE): $(OBJS)
-	@echo "CC $< -> $@"
+	@echo "CC $(OBJS) -> $@"
 	@$(CC) -o $(EXE) $(OBJS) $(CFLAGS) $(INCLUDE_PATHS) $(LDFLAGS) $(LDLIBS) $(CPPFLAGS)
 
 %.o: %.c
@@ -58,6 +58,9 @@ $(EXE): $(OBJS)
 	@$(CC) -c -o $@ $< $(CFLAGS) $(INCLUDE_PATHS) $(LDFLAGS) $(LDLIBS) $(CPPFLAGS)
 
 clean:
-	rm -f $(EXE) $(OBJS)
+	$(RM) $(EXE) $(OBJS)
 
-.PHONY: all clean
+valgrind: $(EXEC)
+	valgrind --verbose --tool=memcheck --track-origins=yes --leak-check=full --leak-resolution=high --show-leak-kinds=all --log-file=$(VALGRIND_LOG) ./$(EXE)
+
+.PHONY: all clean valgrind

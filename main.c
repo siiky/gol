@@ -12,8 +12,8 @@
 
 #define NELEMS(arr) (sizeof(arr) / sizeof(*arr))
 
-#define GOL_NLINES    100
-#define GOL_NCOLS     100
+#define GOL_NLINES    65
+#define GOL_NCOLS     65
 #define CELL_ORIGIN_X 0
 #define CELL_ORIGIN_Y 0
 #define CELL_WIDTH    11
@@ -51,9 +51,10 @@ int main (void)
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     SetTargetFPS(TARGET_FPS);
 
-    SetWindowMinSize(WIN_WIDTH, WIN_HEIGHT);
-    SetWindowSize(WIN_WIDTH, WIN_HEIGHT);
     InitWindow(WIN_WIDTH, WIN_HEIGHT, "wew lad"); {
+        SetWindowMinSize(WIN_WIDTH, WIN_HEIGHT);
+        SetWindowSize(WIN_WIDTH, WIN_HEIGHT);
+
         while (!WindowShouldClose()) {
             if (should_iter && !IsKeyDown(KEY_ENTER)) {
                 /* Have we seen this iteration? */
@@ -66,6 +67,11 @@ int main (void)
                 /* iterate once */
                 should_iter = gol_iter(gol, 1)
                     && !elem;
+
+                if (!should_iter) {
+                    puts("GOL ITERATION OVER");
+                    gens_free(gens);
+                }
             }
 
             BeginDrawing(); {

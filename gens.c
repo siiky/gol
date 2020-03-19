@@ -1,21 +1,21 @@
 #include <utils/bs.h>
-#define MAP_CFG_KEY_DTOR bs_free
-#define MAP_CFG_HASH_FUNC bs_hash
-#define MAP_CFG_KEY_CMP bs_cmp
+
+#define MAP_CFG_HASH_FUNC(self)      (bs_hash(&(self)))
+#define MAP_CFG_KEY_CMP(self, other) (bs_cmp(&(self), &(other)))
+#define MAP_CFG_KEY_DTOR(self)       (bs_free(&(self)))
 #define MAP_CFG_IMPLEMENTATION
 #include "gens.h"
 
-bool gens_add (struct gens * self, struct gol * gol)
+bool gens_add (struct gens * self, const struct gol * gol)
 {
-    struct bs * clone = malloc(sizeof(struct bs));
-    return clone != NULL
-        && (bs_clone(gol->current, clone) || (free(clone), false))
+    struct bs clone = {0};
+    return bs_clone(gol->current, &clone)
         && gens__add(self, clone, 0);
 }
 
-inline bool gens_contains (struct gens * self, struct gol * gol)
+inline bool gens_contains (struct gens * self, const struct gol * gol)
 {
-    return gens__contains(self, gol->current);
+    return gens__contains(self, *gol->current);
 }
 
 inline bool gens_free (struct gens * self)

@@ -1,4 +1,3 @@
-#define VEC_CFG_IMPLEMENTATION
 #include "gol.h"
 
 #include <utils/common.h>
@@ -60,18 +59,6 @@ static inline unsigned char _gol_cell_neighbours (struct gol * self, unsigned l,
     return ret;
 }
 
-static inline bool _gol_all_neighbours (struct gol * self)
-{
-    bool ret = true;
-    for (unsigned i = 0; ret && i < self->nlines; i++) {
-        for (unsigned j = 0; ret && j < self->ncols; j++) {
-            unsigned char neighbours = _gol_cell_neighbours(self, i, j);
-            ret = vec_set_nth(self->neighbours, gol_coord2idx(self, i, j), neighbours);
-        }
-    }
-    return ret;
-}
-
 bool gol_cell_get (struct gol * self, unsigned l, unsigned c)
 {
     return self != NULL
@@ -115,7 +102,6 @@ bool gol_free (struct gol * self)
     if (self != NULL) {
         bs_free(self->current);
         bs_free(self->next);
-        *self->neighbours = vec_free(*self->neighbours);
         _gol_clean(self);
     }
     return true;
@@ -137,21 +123,19 @@ bool gol_new (struct gol * self, unsigned nlines, unsigned ncols)
     return self != NULL
         && bs_init(self->current, ncells)
         && bs_init(self->next, ncells)
-        && vec_with_cap(self->neighbours, ncells)
-        && vec_set_len(self->neighbours, ncells)
         && ((self->nlines = nlines), (self->ncols = ncols), true);
 }
 
 bool gol_next (struct gol * self)
 {
-    if (self == NULL || !_gol_all_neighbours(self))
+    if (self == NULL)
         return false;
 
     for (unsigned i = 0; i < self->nlines; i++) {
         for (unsigned j = 0; j < self->ncols; j++) {
             unsigned idx = gol_coord2idx(self, i, j);
             bool cur = bs_get(self->current, idx);
-            bool next = _gol_cell_fate(cur, vec_get_nth(self->neighbours, idx));
+            bool next = _gol_cell_fate(cur, _gol_cell_neighbours(self, i, j));
             bool res = bs_set(self->next, idx, next);
             if (!res)
                 return false;

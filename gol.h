@@ -1,8 +1,6 @@
 #ifndef _GOL_H
 #define _GOL_H
 
-#define VEC_CFG_DATA_TYPE unsigned char
-#include <utils/vec.h>
 #include <utils/bs.h>
 
 #include <stdio.h>
@@ -10,7 +8,6 @@
 struct gol {
     struct bs  current[1];
     struct bs  next[1];
-    struct vec neighbours[1];
     unsigned   nlines;
     unsigned   ncols;
 };
